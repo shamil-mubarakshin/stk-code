@@ -45,7 +45,7 @@ jobs:
           echo "Running ls.."
           ls -la dependencies-macosx/lib
           echo "Running otool.."
-          otool -L libcurl.4.dylib
+          otool -L dependencies-macosx/lib/libcurl.4.dylib
           echo "Running dylibbundler.."
           dylibbundler -od -b -x ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart -d ./macosx-arm64/supertuxkart.app/Contents/libs/ -p @executable_path/../libs/ -s ./dependencies-macosx/lib -ns
           # We use SDL_Vulkan_LoadLibrary for 10.9 compatibility, so otool -L supertuxkart has no libMoltenVK.dylib
