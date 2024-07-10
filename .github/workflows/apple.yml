@@ -1,11 +1,11 @@
 name: apple
 on:
-  push:
-    branches:
-      - master
-    tags:
-      - '*'
-  pull_request: {}
+  # push:
+  #   branches:
+  #     - master
+  #   tags:
+  #     - '*'
+  # pull_request: {}
   workflow_dispatch:
 
 jobs:
@@ -103,28 +103,28 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Configure packaging name for git master branch
-        if: ${{ github.ref == 'refs/heads/master' }}
+        # if: ${{ github.ref == 'refs/heads/master' }}
         run: |
           echo "release_tag=git`date +%Y%m%d`" >> $GITHUB_ENV
           echo "release_name=preview" >> $GITHUB_ENV
-      - name: Configure packaging name for tag
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        run: |
-          echo "release_tag=`basename $GITHUB_REF`" >> $GITHUB_ENV
-          echo "release_name=`basename $GITHUB_REF`" >> $GITHUB_ENV
-      - name: Configure packaging name for non-releasing branch
-        if: ${{ (github.ref != 'refs/heads/master' && !startsWith(github.ref, 'refs/tags/')) || github.repository_owner != 'supertuxkart' }}
-        run: |
-          echo "release_tag=" >> $GITHUB_ENV
-          echo "release_name=" >> $GITHUB_ENV
+      # - name: Configure packaging name for tag
+      #   if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      #   run: |
+      #     echo "release_tag=`basename $GITHUB_REF`" >> $GITHUB_ENV
+      #     echo "release_name=`basename $GITHUB_REF`" >> $GITHUB_ENV
+      # - name: Configure packaging name for non-releasing branch
+      #   if: ${{ (github.ref != 'refs/heads/master' && !startsWith(github.ref, 'refs/tags/')) || github.repository_owner != 'supertuxkart' }}
+      #   run: |
+      #     echo "release_tag=" >> $GITHUB_ENV
+      #     echo "release_name=" >> $GITHUB_ENV
       - name: Check for prerelease
-        if: ${{ github.ref == 'refs/heads/master' || contains(github.ref, 'rc') || contains(github.ref, 'beta') }}
+        # if: ${{ github.ref == 'refs/heads/master' || contains(github.ref, 'rc') || contains(github.ref, 'beta') }}
         run: |
           echo "release_pre=true" >> $GITHUB_ENV
-      - name: Check for non-prerelease
-        if: ${{ github.ref != 'refs/heads/master' && !contains(github.ref, 'rc') && !contains(github.ref, 'beta') }}
-        run: |
-          echo "release_pre=false" >> $GITHUB_ENV
+      # - name: Check for non-prerelease
+      #   if: ${{ github.ref != 'refs/heads/master' && !contains(github.ref, 'rc') && !contains(github.ref, 'beta') }}
+      #   run: |
+      #     echo "release_pre=false" >> $GITHUB_ENV
       - name: Show packaging name
         run : |
           echo "${{ env.release_tag }}"
@@ -132,25 +132,29 @@ jobs:
           echo "${{ env.release_pre }}"
       - name: Download binaries
         uses: actions/download-artifact@v2
-      - name: Mask developer name
-        run: |
-          echo "::add-mask::${{ secrets.MAC_DEVELOPER_NAME }}"
-      - name: Import certificates
-        if: ${{ env.release_tag != '' }}
-        uses: apple-actions/import-codesign-certs@v1
-        with:
-          p12-file-base64: ${{ secrets.MAC_DEVELOPER_ID_P12_FILE }}
-          p12-password: ${{ secrets.MAC_DEVELOPER_ID_P12_PASSWORD }}
+      # - name: Mask developer name
+      #   run: |
+      #     echo "::add-mask::${{ secrets.MAC_DEVELOPER_NAME }}"
+      # - name: Import certificates
+      #   if: ${{ env.release_tag != '' }}
+      #   uses: apple-actions/import-codesign-certs@v1
+      #   with:
+      #     p12-file-base64: ${{ secrets.MAC_DEVELOPER_ID_P12_FILE }}
+      #     p12-password: ${{ secrets.MAC_DEVELOPER_ID_P12_PASSWORD }}
       - name: Run dylibbundler and sign STK
-        if: ${{ env.release_tag != '' }}
+        # if: ${{ env.release_tag != '' }}
         env:
-          developer_id: "Developer ID Application: ${{ secrets.MAC_DEVELOPER_NAME }} (${{ secrets.MAC_DEVELOPER_TEAM }})"
+          developer_id: "Developer ID Application: MAC_DEVELOPER_NAME  (MAC_DEVELOPER_TEAM)"
         run: |
           wget https://github.com/supertuxkart/dependencies/releases/download/preview/dependencies-macosx.tar.xz
+          echo "Running tar xf.."
           tar xf dependencies-macosx.tar.xz
+          echo "Running dylibbundler install.."
           HOMEBREW_NO_AUTO_UPDATE=1 brew install dylibbundler
+          echo "Running lipo.."
           lipo -create ./macosx-x86_64/supertuxkart.app/Contents/MacOS/supertuxkart ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart -output ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
           chmod 755 ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
+          echo "Running dylibbundler.."
           dylibbundler -od -b -x ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart -d ./macosx-arm64/supertuxkart.app/Contents/libs/ -p @executable_path/../libs/ -s ./dependencies-macosx/lib -ns
           # We use SDL_Vulkan_LoadLibrary for 10.9 compatibility, so otool -L supertuxkart has no libMoltenVK.dylib
           cp ./dependencies-macosx/lib/libMoltenVK.dylib ./macosx-arm64/supertuxkart.app/Contents/libs/
@@ -162,26 +166,26 @@ jobs:
           mv ./macosx-arm64/supertuxkart.app SuperTuxKart.app
           codesign --force --sign "$developer_id" SuperTuxKart.app/Contents/libs/*.dylib
           codesign --force --options=runtime --deep --sign "$developer_id" SuperTuxKart.app
-      - name: "Notarize release build"
-        if: ${{ env.release_tag != '' && github.ref != 'refs/heads/master' }}
-        run: |
-          ditto -c -k --sequesterRsrc --keepParent SuperTuxKart.app tmp.zip
-          xcrun notarytool submit tmp.zip --apple-id ${{ secrets.STK_NOTARIZATION_USERNAME }} \
-                                          --password ${{ secrets.STK_NOTARIZATION_PASSWORD }} \
-                                          --team-id ${{ secrets.MAC_DEVELOPER_TEAM }} --wait
-          xcrun stapler staple SuperTuxKart.app
-      - name: Archive
-        if: ${{ env.release_tag != '' }}
-        run: |
-          ditto -c -k --sequesterRsrc --keepParent SuperTuxKart.app SuperTuxKart-${{ env.release_tag }}-mac.zip
-      - name: Create release
-        if: ${{ env.release_tag != '' }}
-        uses: ncipollo/release-action@v1.8.8
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: "SuperTuxKart*.zip"
-          tag: ${{ env.release_name }}
-          omitBodyDuringUpdate: true
-          omitNameDuringUpdate: true
-          allowUpdates: true
-          prerelease: ${{ env.release_pre }}
+      # - name: "Notarize release build"
+      #   if: ${{ env.release_tag != '' && github.ref != 'refs/heads/master' }}
+      #   run: |
+      #     ditto -c -k --sequesterRsrc --keepParent SuperTuxKart.app tmp.zip
+      #     xcrun notarytool submit tmp.zip --apple-id ${{ secrets.STK_NOTARIZATION_USERNAME }} \
+      #                                     --password ${{ secrets.STK_NOTARIZATION_PASSWORD }} \
+      #                                     --team-id ${{ secrets.MAC_DEVELOPER_TEAM }} --wait
+      #     xcrun stapler staple SuperTuxKart.app
+      # - name: Archive
+      #   if: ${{ env.release_tag != '' }}
+      #   run: |
+      #     ditto -c -k --sequesterRsrc --keepParent SuperTuxKart.app SuperTuxKart-${{ env.release_tag }}-mac.zip
+      # - name: Create release
+      #   if: ${{ env.release_tag != '' }}
+      #   uses: ncipollo/release-action@v1.8.8
+      #   with:
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     artifacts: "SuperTuxKart*.zip"
+      #     tag: ${{ env.release_name }}
+      #     omitBodyDuringUpdate: true
+      #     omitNameDuringUpdate: true
+      #     allowUpdates: true
+      #     prerelease: ${{ env.release_pre }}
