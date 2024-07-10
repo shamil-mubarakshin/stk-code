@@ -6,6 +6,8 @@ jobs:
   packaging:
     name: Packaging STK
     runs-on: macos-latest
+    permissions:
+      actions: read
     steps:
       - name: Configure packaging name for git master branch
         run: |
@@ -24,7 +26,7 @@ jobs:
       - name: Download binaries
         uses: actions/download-artifact@v2
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: 9875977287 # download from `apple` workflow
           repository: shamil-mubarakshin/stk-code
 
