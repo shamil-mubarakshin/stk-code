@@ -1,0 +1,55 @@
+name: applev2
+on:
+  workflow_dispatch:
+
+jobs:
+  packaging:
+    name: Packaging STK
+    runs-on: macos-latest
+    steps:
+      - name: Configure packaging name for git master branch
+        run: |
+          echo "release_tag=git`date +%Y%m%d`" >> $GITHUB_ENV
+          echo "release_name=preview" >> $GITHUB_ENV
+
+      - name: Check for prerelease
+        run: |
+          echo "release_pre=true" >> $GITHUB_ENV
+
+      - name: Show packaging name
+        run : |
+          echo "${{ env.release_tag }}"
+          echo "${{ env.release_name }}"
+          echo "${{ env.release_pre }}"
+      - name: Download binaries
+        uses: actions/download-artifact@v2
+        with:
+          github-token: ${{ github.token }}
+          run-id: 9875977287 # download from `apple` workflow
+
+      - name: Run dylibbundler and sign STK
+        env:
+          developer_id: "Developer ID Application: MAC_DEVELOPER_NAME  (MAC_DEVELOPER_TEAM)"
+        run: |
+          wget https://github.com/supertuxkart/dependencies/releases/download/preview/dependencies-macosx.tar.xz
+          echo "Running tar xf.."
+          tar xf dependencies-macosx.tar.xz
+          echo "Running dylibbundler install.."
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install dylibbundler
+          echo "Running lipo.."
+          lipo -create ./macosx-x86_64/supertuxkart.app/Contents/MacOS/supertuxkart ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart -output ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
+          chmod 755 ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
+          echo "Running ls.."
+          ls -la dependencies-macosx/lib
+          echo "Running dylibbundler.."
+          dylibbundler -od -b -x ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart -d ./macosx-arm64/supertuxkart.app/Contents/libs/ -p @executable_path/../libs/ -s ./dependencies-macosx/lib -ns
+          # We use SDL_Vulkan_LoadLibrary for 10.9 compatibility, so otool -L supertuxkart has no libMoltenVK.dylib
+          cp ./dependencies-macosx/lib/libMoltenVK.dylib ./macosx-arm64/supertuxkart.app/Contents/libs/
+          cd ./macosx-arm64/supertuxkart.app/Contents/Resources/data
+          wget https://github.com/supertuxkart/stk-assets-mobile/releases/download/git/stk-assets-full.zip
+          unzip stk-assets-full.zip
+          rm stk-assets-full.zip
+          cd ../../../../..
+          mv ./macosx-arm64/supertuxkart.app SuperTuxKart.app
+          codesign --force --sign "$developer_id" SuperTuxKart.app/Contents/libs/*.dylib
+          codesign --force --options=runtime --deep --sign "$developer_id" SuperTuxKart.app
