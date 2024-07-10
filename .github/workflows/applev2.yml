@@ -44,6 +44,10 @@ jobs:
           chmod 755 ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
           echo "Running ls.."
           ls -la dependencies-macosx/lib
+          echo "Running ls..."
+          ls -la /usr/lib
+          echo "Running ls..."
+          ls -la /usr/local
           echo "Running otool.."
           otool -L dependencies-macosx/lib/libcurl.4.dylib
           echo "Running dylibbundler.."
