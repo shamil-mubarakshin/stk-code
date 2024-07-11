@@ -52,9 +52,6 @@ jobs:
 
           echo "Running otool macosx-x86_64..."
           otool -L ./macosx-x86_64/supertuxkart.app/Contents/MacOS/supertuxkart
-
-          echo "Running otool iphoneos-arm64..."
-          otool -L ./supertuxkart
           
           echo "Running lipo.."
           lipo -create ./macosx-x86_64/supertuxkart.app/Contents/MacOS/supertuxkart ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart -output ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
@@ -63,7 +60,7 @@ jobs:
           echo "Running ls.."
           ls -la dependencies-macosx/lib
           
-          echo "Running otool.."
+          echo "Running otool after lipo.."
           otool -L ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
           
           echo "Running dylibbundler.."
