@@ -28,7 +28,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: 9783915380 # download from `apple` workflow
+          run-id: 9783915380 # download from https://github.com/supertuxkart/stk-code/actions/runs/9783915380
           repository: supertuxkart/stk-code
           
       # - name: Download binaries
@@ -47,17 +47,25 @@ jobs:
           tar xf dependencies-macosx.tar.xz
           echo "Running dylibbundler install.."
           HOMEBREW_NO_AUTO_UPDATE=1 brew install dylibbundler
+          echo "Running otool macosx-arm64..."
+          otool -L ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
+
+          echo "Running otool macosx-x86_64..."
+          otool -L ./macosx-x86_64/supertuxkart.app/Contents/MacOS/supertuxkart
+
+          echo "Running otool iphoneos-arm64..."
+          otool -L ./iphoneos-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
+          
           echo "Running lipo.."
           lipo -create ./macosx-x86_64/supertuxkart.app/Contents/MacOS/supertuxkart ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart -output ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
           chmod 755 ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
+          
           echo "Running ls.."
           ls -la dependencies-macosx/lib
-          echo "Running ls..."
-          ls -la /usr/lib
-          echo "Running ls..."
-          ls -la /usr/local
+          
           echo "Running otool.."
           otool -L ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart
+          
           echo "Running dylibbundler.."
           dylibbundler -od -b -x ./macosx-arm64/supertuxkart.app/Contents/MacOS/supertuxkart -d ./macosx-arm64/supertuxkart.app/Contents/libs/ -p @executable_path/../libs/ -s ./dependencies-macosx/lib -ns
           # We use SDL_Vulkan_LoadLibrary for 10.9 compatibility, so otool -L supertuxkart has no libMoltenVK.dylib
